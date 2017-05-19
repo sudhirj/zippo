@@ -1,0 +1,12 @@
+{
+  "name": "Zippo",
+  "description": "Zipping as a service",
+  "keywords": [
+    "zip",
+    "go"
+  ],
+  "image": "heroku/go:1.8",
+  "mount_dir": "src/github.com/sudhirj/zippo",
+  "website": "http://github.com/sudhirj/zippo",
+  "repository": "http://github.com/sudhirj/zippo"
+}
