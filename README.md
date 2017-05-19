@@ -1,5 +1,8 @@
+
 # Zippo
 Get a zip full of a list of file URLs provided. 
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 POST a list of file URLs to `//zippo.yourdeployment.com?filename=package.zip` like so
 ```
