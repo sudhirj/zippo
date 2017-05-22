@@ -13,4 +13,6 @@ dir1/more.txt=https://s3.aws.com/something&
 ```
 And a download of the file you expect will start almost immediately.
 
+See [test.html](https://github.com/sudhirj/zippo/blob/master/test.html) for an example HTML form that triggers a download. 
+
 
