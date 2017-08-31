@@ -13,6 +13,8 @@ dir1/more.txt=https://s3.aws.com/something&
 ```
 And a download of the file you expect will start almost immediately.
 
+If the information being downloaded is sensitive, use signed URLs to control access to data. Zippo does not cache or store the zipped data in any way. 
+
 See [test.html](https://github.com/sudhirj/zippo/blob/master/test.html) for an example HTML form that triggers a download. 
 
 
