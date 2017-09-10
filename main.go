@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 )
 
 func main() {
@@ -31,8 +30,6 @@ func main() {
 			entryHeader := &zip.FileHeader{
 				Name: path,
 			}
-			entryHeader.SetModTime(time.Now())
-			entryHeader.SetMode(os.ModePerm)
 			entry, err := archive.CreateHeader(entryHeader)
 			if err != nil {
 				handleError(err, w)
