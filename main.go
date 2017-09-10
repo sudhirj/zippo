@@ -35,23 +35,27 @@ func main() {
 			entryHeader.SetMode(os.ModePerm)
 			entry, err := archive.CreateHeader(entryHeader)
 			if err != nil {
-				http.Error(w, "error", http.StatusBadRequest)
-				log.Println(err)
+				handleError(err, w)
 				return
 			}
 			download, err := http.Get(urls[0])
 			if err != nil {
-				http.Error(w, "error", http.StatusBadRequest)
-				log.Println(err)
+				handleError(err, w)
 				return
 			}
 			io.Copy(entry, download.Body)
+			download.Body.Close()
 		}
 		err := archive.Close()
 		if err != nil {
-			http.Error(w, "error", http.StatusBadRequest)
-			log.Println(err)
+			handleError(err, w)
 			return
 		}
 	}))
+}
+
+func handleError(err error, w http.ResponseWriter) {
+	http.Error(w, "error", http.StatusBadRequest)
+	log.Println(err)
+	return
 }
