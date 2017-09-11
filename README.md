@@ -4,6 +4,15 @@ Get a zip full of a list of file URLs provided.
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
+or
+
+```
+docker pull sudhirj/zippo
+```
+Set to `PORT` environment variable to whatever port you want zippo to bind to.
+
+---
+
 POST a list of file URLs to `//zippo.yourdeployment.com?filename=package.zip` like so
 ```
 file1.txt=https://s3.aws.com/file1&
