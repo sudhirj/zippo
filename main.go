@@ -14,7 +14,7 @@ import (
 
 	"strconv"
 
-	_ "github.com/heroku/x/hmetrics"
+	_ "github.com/heroku/x/hmetrics/onload"
 )
 
 type FileDef struct {
