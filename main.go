@@ -105,8 +105,10 @@ func main() {
 			downloaderQueue <- FileDef{path: path, url: urls[0]}
 		}
 		close(downloaderQueue)
+
 		downloaderWaitGroup.Wait()
 		close(archiverQueue)
+
 		err := <-finished
 		if err != nil {
 			handleError(err, w)
