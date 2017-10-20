@@ -62,7 +62,6 @@ func main() {
 					Method: zip.Deflate,
 				}
 				zipEntryHeader.SetModTime(time.Now())
-				zipEntryHeader.SetMode(os.ModePerm)
 				entryWriter, err := archive.CreateHeader(zipEntryHeader)
 				if err != nil {
 					finished <- err
