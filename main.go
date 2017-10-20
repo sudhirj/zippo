@@ -85,9 +85,10 @@ func main() {
 		// Run downloaders
 		for w := 1; w <= DownloadConcurrency; w++ {
 			go func(w int) {
-				log.Println("Downloader Ready: " + strconv.Itoa(w))
+				index := strconv.Itoa(w)
+				log.Println("Downloader Ready: " + index)
 				for df := range downloaderQueue {
-					log.Println("Downloading [" + strconv.Itoa(w) + "] path: " + df.path + " URL: " + df.url)
+					log.Println("Downloading [" + index + "] path: " + df.path + " URL: " + df.url)
 					download, err := pester.Get(df.url)
 					if err != nil {
 						log.Println("ERROR: " + err.Error())
@@ -96,7 +97,7 @@ func main() {
 					}
 					downloaderWaitGroup.Done()
 				}
-				log.Println("Downloader Shutting Down: " + strconv.Itoa(w))
+				log.Println("Downloader Shutting Down: " + index)
 			}(w)
 		}
 
