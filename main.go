@@ -8,16 +8,36 @@ import (
 	"os"
 	"time"
 
+	"sync"
+
+	"github.com/sethgrid/pester"
+
+	"strconv"
+
 	_ "github.com/heroku/x/hmetrics"
 )
 
+type FileDef struct {
+	path string
+	url  string
+}
+type RemoteFile struct {
+	path     string
+	response *http.Response
+}
+
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "7777"
+	Port := os.Getenv("PORT")
+	if Port == "" {
+		Port = "7777"
+	}
+	DownloadConcurrency, err := strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
+	if err != nil {
+		DownloadConcurrency = 10
 	}
 
-	http.ListenAndServe(":"+port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	log.Println("Listening on PORT " + Port)
+	http.ListenAndServe(":"+Port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		fileName := r.FormValue("filename")
 		if fileName == "" {
@@ -28,31 +48,69 @@ func main() {
 
 		archive := zip.NewWriter(w)
 
-		for path, urls := range r.PostForm {
-			log.Println("Downloading key: " + path + " URL: " + urls[0])
-			entryHeader := &zip.FileHeader{
-				Name: path,
+		archiverQueue := make(chan RemoteFile)
+		downloaderQueue := make(chan FileDef)
+		downloaderWaitGroup := sync.WaitGroup{}
+		finished := make(chan error)
+
+		// Run archiver
+		go func() {
+			for rf := range archiverQueue {
+				log.Println("Received data for " + rf.path)
+				zipEntryHeader := &zip.FileHeader{
+					Name:   rf.path,
+					Method: zip.Deflate,
+				}
+				zipEntryHeader.SetModTime(time.Now())
+				zipEntryHeader.SetMode(os.ModePerm)
+				entryWriter, err := archive.CreateHeader(zipEntryHeader)
+				if err != nil {
+					finished <- err
+					return
+				}
+				io.Copy(entryWriter, rf.response.Body)
+				rf.response.Body.Close()
+				log.Println("Zipped " + rf.path)
 			}
-			entryHeader.SetModTime(time.Now())
-			entryHeader.SetMode(os.ModePerm)
-			entry, err := archive.CreateHeader(entryHeader)
+			log.Println("All zipping complete, closing up.")
+			err := archive.Close()
 			if err != nil {
-				handleError(err, w)
+				finished <- err
 				return
 			}
-			download, err := http.Get(urls[0])
-			if err != nil {
-				handleError(err, w)
-				return
-			}
-			modifiedTime, err := time.Parse("Mon, 2 Jan 2006 15:04:05 MST", download.Header.Get("Last-Modified"))
-			if err != nil {
-				entryHeader.SetModTime(modifiedTime)
-			}
-			io.Copy(entry, download.Body)
-			download.Body.Close()
+			log.Println("Acrhive closed.")
+			finished <- nil
+		}()
+
+		// Run downloaders
+		for w := 1; w <= DownloadConcurrency; w++ {
+			go func(w int) {
+				index := strconv.Itoa(w)
+				log.Println("Downloader Ready: " + index)
+				for df := range downloaderQueue {
+					log.Println("Downloading [" + index + "] path: " + df.path + " URL: " + df.url)
+					download, err := pester.Get(df.url)
+					if err != nil {
+						log.Println("ERROR: " + err.Error())
+					} else {
+						archiverQueue <- RemoteFile{path: df.path, response: download}
+					}
+					downloaderWaitGroup.Done()
+				}
+				log.Println("Downloader Shutting Down: " + index)
+			}(w)
 		}
-		err := archive.Close()
+
+		for path, urls := range r.PostForm {
+			downloaderWaitGroup.Add(1)
+			downloaderQueue <- FileDef{path: path, url: urls[0]}
+		}
+		close(downloaderQueue)
+
+		downloaderWaitGroup.Wait()
+		close(archiverQueue)
+
+		err := <-finished
 		if err != nil {
 			handleError(err, w)
 			return

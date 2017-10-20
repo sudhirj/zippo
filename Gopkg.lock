@@ -7,9 +7,15 @@
   packages = ["hmetrics"]
   revision = "705849e307dd75c91728463dea5bfd08ef493e64"
 
+[[projects]]
+  branch = "master"
+  name = "github.com/sethgrid/pester"
+  packages = ["."]
+  revision = "0af5bab1e1ea2860c5aef8e77427bab011d774d8"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d0ec98cb284361ef5e3fea5a5b2c4ab7bca99ce29f31c46da953723ded4e42d6"
+  inputs-digest = "d3af54fb9865d76bf5065a0ba8d349c1835700e2025d0ea826bf817bef050d31"
   solver-name = "gps-cdcl"
   solver-version = 1
