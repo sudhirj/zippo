@@ -33,7 +33,7 @@ func main() {
 
 		archive := zip.NewWriter(w)
 
-		receiver := make(chan remote_file, 5)
+		receiver := make(chan remote_file, 10)
 		done := make(chan error)
 
 		go func() {
