@@ -29,6 +29,11 @@ func main() {
 	if port == "" {
 		port = "7777"
 	}
+	concurrency, err := strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
+	if err != nil {
+		concurrency = 10
+	}
+
 	log.Println("Listening on port " + port)
 	http.ListenAndServe(":"+port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -82,7 +87,7 @@ func main() {
 		}()
 
 		// Run downloaders
-		for w := 1; w <= 5; w++ {
+		for w := 1; w <= concurrency; w++ {
 			go func(w int) {
 				log.Println("Downloader Ready: " + strconv.Itoa(w))
 				for df := range downloadQueue {
