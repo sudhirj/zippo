@@ -91,14 +91,13 @@ func main() {
 			go func(w int) {
 				log.Println("Downloader Ready: " + strconv.Itoa(w))
 				for df := range downloadQueue {
-					log.Println("Downloading[" + strconv.Itoa(w) + "] path: " + df.path + " URL: " + df.url)
+					log.Println("Downloading [" + strconv.Itoa(w) + "] path: " + df.path + " URL: " + df.url)
 					download, err := http.Get(df.url)
 					if err != nil {
-						downloaderWaitGroup.Done()
-						finished <- err
-						return
+						log.Println("ERROR: " + err.Error())
+					} else {
+						archiveQueue <- remoteFile{path: df.path, response: download}
 					}
-					archiveQueue <- remoteFile{path: df.path, response: download}
 					downloaderWaitGroup.Done()
 				}
 				log.Println("Downloader Shutting Down: " + strconv.Itoa(w))
