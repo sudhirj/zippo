@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	_ "github.com/heroku/x/hmetrics"
 )
 
 func main() {
