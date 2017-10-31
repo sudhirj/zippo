@@ -21,6 +21,7 @@ type FileDef struct {
 	path string
 	url  string
 }
+
 type RemoteFile struct {
 	path     string
 	response *http.Response
@@ -31,13 +32,16 @@ func main() {
 	if Port == "" {
 		Port = "7777"
 	}
-	DownloadConcurrency, err := strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
-	if err != nil {
-		DownloadConcurrency = 10
-	}
-
 	log.Println("Listening on PORT " + Port)
-	http.ListenAndServe(":"+Port, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.ListenAndServe(":"+Port, zipperHandler())
+}
+
+func zipperHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		DownloadConcurrency, err := strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
+		if err != nil {
+			DownloadConcurrency = 10
+		}
 		r.ParseForm()
 		fileName := r.FormValue("filename")
 		if fileName == "" {
@@ -51,6 +55,7 @@ func main() {
 		archiverQueue := make(chan RemoteFile)
 		downloaderQueue := make(chan FileDef)
 		downloaderWaitGroup := sync.WaitGroup{}
+
 		finished := make(chan error)
 
 		// Run archiver
@@ -109,12 +114,12 @@ func main() {
 		downloaderWaitGroup.Wait()
 		close(archiverQueue)
 
-		err := <-finished
+		err = <-finished
 		if err != nil {
 			handleError(err, w)
 			return
 		}
-	}))
+	})
 }
 
 func handleError(err error, w http.ResponseWriter) {
