@@ -33,64 +33,65 @@ func main() {
 	if port == "" {
 		port = "7777"
 	}
+	http.ListenAndServe(":"+port, server())
+}
+func server() http.Handler {
 	n := negroni.Classic()
-	n.UseHandler(zipperHandler())
-	log.Println("Listening on PORT " + port)
-	http.ListenAndServe(":"+port, n)
+	n.UseHandlerFunc(handleZip)
+	return n
 }
 
-func zipperHandler() http.Handler {
-	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
-		downloadConcurrency, err := strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
-		if err != nil || downloadConcurrency <= 0 {
-			downloadConcurrency = 10
+func handleZip(responseWriter http.ResponseWriter, request *http.Request) {
+	downloadConcurrency, err := strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
+	if err != nil || downloadConcurrency <= 0 {
+		downloadConcurrency = 10
+	}
+	request.ParseForm()
+	fileName := request.FormValue("filename")
+	if fileName == "" {
+		fileName = "download.zip"
+	}
+	responseWriter.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
+
+	downloaderQueue := make(chan FileMetadata)
+	fileQueue := make(chan RemoteFile)
+	zipperQueue := make(chan RemoteFile)
+	downloadWaitGroup := sync.WaitGroup{}
+
+	completionSignal := make(chan error)
+
+	// Run zipper
+	go zipper(responseWriter, zipperQueue, completionSignal)
+
+	// Run downloader pool
+	for i := 1; i <= downloadConcurrency; i++ {
+		go downloader(downloaderQueue, fileQueue)
+	}
+
+	go func() {
+		for df := range fileQueue {
+			downloadWaitGroup.Done()
+			zipperQueue <- df
 		}
-		request.ParseForm()
-		fileName := request.FormValue("filename")
-		if fileName == "" {
-			fileName = "download.zip"
-		}
-		responseWriter.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
+		close(zipperQueue)
+	}()
 
-		downloaderQueue := make(chan FileMetadata)
-		fileQueue := make(chan RemoteFile)
-		zipperQueue := make(chan RemoteFile)
-		downloadWaitGroup := sync.WaitGroup{}
+	for path, urls := range request.PostForm {
+		downloadWaitGroup.Add(1)
+		downloaderQueue <- FileMetadata{path: path, url: urls[0]}
+	}
+	close(downloaderQueue)
 
-		completionSignal := make(chan error)
+	downloadWaitGroup.Wait()
+	close(fileQueue)
 
-		// Run zipper
-		go zipper(responseWriter, zipperQueue, completionSignal)
+	err = <-completionSignal
 
-		// Run downloaders
-		for i := 1; i <= downloadConcurrency; i++ {
-			go downloader(downloaderQueue, fileQueue)
-		}
+	if err != nil {
+		handleError(err, responseWriter)
+		return
+	}
 
-		go func() {
-			for df := range fileQueue {
-				downloadWaitGroup.Done()
-				zipperQueue <- df
-			}
-			close(zipperQueue)
-		}()
-
-		for path, urls := range request.PostForm {
-			downloadWaitGroup.Add(1)
-			downloaderQueue <- FileMetadata{path: path, url: urls[0]}
-		}
-		close(downloaderQueue)
-
-		downloadWaitGroup.Wait()
-		close(fileQueue)
-
-		err = <-completionSignal
-
-		if err != nil {
-			handleError(err, responseWriter)
-			return
-		}
-	})
 }
 
 func handleError(err error, w http.ResponseWriter) {

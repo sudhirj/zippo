@@ -22,7 +22,7 @@ func TestZipper(t *testing.T) {
 		log.Println(r.URL.Path)
 		fmt.Fprint(w, r.URL.Path)
 	}))
-	zipperServer := httptest.NewServer(zipperHandler())
+	zipperServer := httptest.NewServer(server())
 	for n := 0; n < rand.Intn(100); n++ {
 		data := &url.Values{}
 		for i := 0; i < rand.Intn(1000); i++ {
