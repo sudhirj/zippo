@@ -4,7 +4,7 @@
 [[projects]]
   branch = "master"
   name = "github.com/heroku/x"
-  packages = ["hmetrics"]
+  packages = ["hmetrics","hmetrics/onload"]
   revision = "705849e307dd75c91728463dea5bfd08ef493e64"
 
 [[projects]]
@@ -13,9 +13,15 @@
   packages = ["."]
   revision = "0af5bab1e1ea2860c5aef8e77427bab011d774d8"
 
+[[projects]]
+  name = "github.com/urfave/negroni"
+  packages = ["."]
+  revision = "fde5e16d32adc7ad637e9cd9ad21d4ebc6192535"
+  version = "v0.2.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d3af54fb9865d76bf5065a0ba8d349c1835700e2025d0ea826bf817bef050d31"
+  inputs-digest = "99aa952d01156445c48ab8749a8393dcdc873d820a0ded38526c0559e0403e21"
   solver-name = "gps-cdcl"
   solver-version = 1
