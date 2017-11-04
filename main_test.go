@@ -1,19 +1,19 @@
 package main
 
 import (
-	"testing"
-	"net/http/httptest"
-	"net/http"
-	"fmt"
-	"log"
-	"net/url"
 	"archive/zip"
-	"os"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"time"
+	"log"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
 	"strconv"
+	"testing"
+	"time"
 )
 
 func TestZipper(t *testing.T) {

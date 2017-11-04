@@ -6,14 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
-
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/sethgrid/pester"
 	"github.com/urfave/negroni"
-
-	"strconv"
 
 	_ "github.com/heroku/x/hmetrics/onload"
 )
