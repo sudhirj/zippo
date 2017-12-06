@@ -50,6 +50,7 @@ func handleZip(responseWriter http.ResponseWriter, request *http.Request) {
 		fileName = "download.zip"
 	}
 	responseWriter.Header().Add("Content-Disposition", "attachment; filename=\""+fileName+"\"")
+	responseWriter.Header().Add("Access-Control-Allow-Origin", "*")
 
 	downloaderQueue := make(chan FileMetadata)
 	fileQueue := make(chan RemoteFile)
