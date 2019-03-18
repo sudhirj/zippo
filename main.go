@@ -44,7 +44,7 @@ func handleZip(responseWriter http.ResponseWriter, request *http.Request) {
 	if err != nil || downloadConcurrency <= 0 {
 		downloadConcurrency = 10
 	}
-	request.ParseForm()
+	_ = request.ParseForm()
 	fileName := request.FormValue("filename")
 	if fileName == "" {
 		fileName = "download.zip"
@@ -106,7 +106,7 @@ func zipper(writer io.Writer, incoming chan RemoteFile, complete chan error) {
 			Name:   rf.path,
 			Method: zip.Deflate,
 		}
-		zipEntryHeader.SetModTime(time.Now())
+		zipEntryHeader.Modified = time.Now()
 		entryWriter, err := archive.CreateHeader(zipEntryHeader)
 		if err != nil {
 			complete <- err

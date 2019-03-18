@@ -1,0 +1,6 @@
+github.com/heroku/x v0.0.0-20171004170240-705849e307dd h1:zn29UrzyUeQgqxBGXIwQqQJf75IiK4aeCtO5q1V2Vyo=
+github.com/heroku/x v0.0.0-20171004170240-705849e307dd/go.mod h1:opmAyjmIGn9/Y+9Nia6eIaktIXIoMhhFXEFbHLMsX3Y=
+github.com/sethgrid/pester v0.0.0-20170919135742-0af5bab1e1ea h1:n9NUcQqspGxKmCWfqQC2rD7in3ESyNlv2+Cb+KCA6t0=
+github.com/sethgrid/pester v0.0.0-20170919135742-0af5bab1e1ea/go.mod h1:Ad7IjTpvzZO8Fl0vh9AzQ+j/jYZfyp2diGwI8m5q+ns=
+github.com/urfave/negroni v0.2.0 h1:cadBY8/+9L/dTagBqV7N0l/SJiB4Wg+os5QdmaFY5Wg=
+github.com/urfave/negroni v0.2.0/go.mod h1:Meg73S6kFm/4PpbYdq35yYWoCZ9mS/YSx+lKnmiohz4=
