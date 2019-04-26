@@ -1,4 +1,4 @@
-FROM golang:1.9
+FROM golang:1.12
 RUN go get github.com/sudhirj/zippo
 RUN go install github.com/sudhirj/zippo
 ENTRYPOINT /go/bin/zippo
