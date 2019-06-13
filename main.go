@@ -39,22 +39,23 @@ func server() http.Handler {
 	return n
 }
 
-func handleZip(responseWriter http.ResponseWriter, request *http.Request) {
-	_ = request.ParseForm()
+func handleZip(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
 
-	responseWriter.Header().Add("Content-Disposition", "attachment; filename=\""+fileName(request)+"\"")
-	responseWriter.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Add("Content-Disposition", "attachment; filename=\""+fileName(r)+"\"")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
 
-	inputQueue, completionSignal := zipInto(responseWriter)
+	inputQueue, completionSignal := zipInto(w)
 
-	for path, urls := range request.PostForm {
+	for path, urls := range r.PostForm {
 		inputQueue <- FileMetadata{path: path, url: urls[0]}
 	}
 	close(inputQueue)
 
 	err := <-completionSignal
 	if err != nil {
-		handleError(err, responseWriter)
+		log.Println(err)
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -86,52 +87,50 @@ func zipInto(writer http.ResponseWriter) (chan<- FileMetadata, <-chan error) {
 
 }
 
-func runZipper(writer http.ResponseWriter, downloadedFileQueue chan RemoteFile) chan error {
-	// Run zipper
-	zipperCompletionSignal := make(chan error)
+func runZipper(w http.ResponseWriter, input chan RemoteFile) chan error {
+	zipperSignal := make(chan error)
 	go func() {
-		archive := zip.NewWriter(writer)
-		for rf := range downloadedFileQueue {
+		archive := zip.NewWriter(w)
+		for rf := range input {
 			zipEntryHeader := &zip.FileHeader{
 				Name:   rf.path,
 				Method: zip.Deflate,
 			}
 			zipEntryHeader.Modified = time.Now()
 			entryWriter, err := archive.CreateHeader(zipEntryHeader)
-			if err != nil {
-				zipperCompletionSignal <- err
-				return
+
+			if err == nil {
+				_, err = io.Copy(entryWriter, rf.response.Body)
+				_ = rf.response.Body.Close()
 			}
-			_, err = io.Copy(entryWriter, rf.response.Body)
+
 			if err != nil {
-				zipperCompletionSignal <- err
-				return
+				zipperSignal <- err
+				continue
 			}
-			_ = rf.response.Body.Close()
 		}
 		err := archive.Close()
 		if err != nil {
-			zipperCompletionSignal <- err
+			zipperSignal <- err
 			return
 		}
-		zipperCompletionSignal <- nil
+		zipperSignal <- nil
 	}()
-	return zipperCompletionSignal
+	return zipperSignal
 }
 
-func runDownloadWorkers(fileMetadataQueue chan FileMetadata, downloadedFileQueue chan RemoteFile) <-chan error {
-	// Run downloadWorker pool
+func runDownloadWorkers(input chan FileMetadata, output chan RemoteFile) <-chan error {
 	workersRunning := sync.WaitGroup{}
-	workersCompletionSignal := make(chan error)
+	workerSignal := make(chan error)
 	for i := 1; i <= downloadConcurrency(); i++ {
 		workersRunning.Add(1)
 		go func() {
-			for df := range fileMetadataQueue {
+			for df := range input {
 				download, err := pester.Get(df.url)
 				if err != nil {
-					workersCompletionSignal <- err
+					workerSignal <- err
 				} else {
-					downloadedFileQueue <- RemoteFile{df.path, download}
+					output <- RemoteFile{df.path, download}
 				}
 			}
 			workersRunning.Done()
@@ -139,9 +138,9 @@ func runDownloadWorkers(fileMetadataQueue chan FileMetadata, downloadedFileQueue
 	}
 	go func() {
 		workersRunning.Wait()
-		workersCompletionSignal <- nil
+		workerSignal <- nil
 	}()
-	return workersCompletionSignal
+	return workerSignal
 }
 
 func fileName(request *http.Request) (name string) {
@@ -157,11 +156,5 @@ func downloadConcurrency() (dc int) {
 	if err != nil || dc <= 0 {
 		dc = 10
 	}
-	return
-}
-
-func handleError(err error, w http.ResponseWriter) {
-	http.Error(w, "error", http.StatusBadRequest)
-	log.Println(err)
 	return
 }
