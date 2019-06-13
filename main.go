@@ -92,13 +92,7 @@ func runZipper(w http.ResponseWriter, input chan RemoteFile) chan error {
 	go func() {
 		archive := zip.NewWriter(w)
 		for rf := range input {
-			zipEntryHeader := &zip.FileHeader{
-				Name:   rf.path,
-				Method: zip.Deflate,
-			}
-			zipEntryHeader.Modified = time.Now()
-			entryWriter, err := archive.CreateHeader(zipEntryHeader)
-
+			entryWriter, err := archive.CreateHeader(rf.zipHeader())
 			if err == nil {
 				_, err = io.Copy(entryWriter, rf.response.Body)
 				_ = rf.response.Body.Close()
@@ -141,6 +135,15 @@ func runDownloadWorkers(input chan FileMetadata, output chan RemoteFile) <-chan 
 		workerSignal <- nil
 	}()
 	return workerSignal
+}
+
+func (rf RemoteFile) zipHeader() (zh *zip.FileHeader) {
+	zh = &zip.FileHeader{
+		Name:   rf.path,
+		Method: zip.Deflate,
+	}
+	zh.Modified = time.Now()
+	return
 }
 
 func fileName(request *http.Request) (name string) {
