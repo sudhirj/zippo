@@ -16,7 +16,7 @@ import (
 	_ "github.com/heroku/x/hmetrics/onload"
 )
 
-type FileMetadata struct {
+type RemoteFileLocation struct {
 	path string
 	url  string
 }
@@ -33,6 +33,7 @@ func main() {
 	}
 	log.Fatal(http.ListenAndServe(":"+port, server()))
 }
+
 func server() http.Handler {
 	n := negroni.Classic()
 	n.UseHandlerFunc(handleZip)
@@ -45,10 +46,11 @@ func handleZip(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Disposition", "attachment; filename=\""+fileName(r)+"\"")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 
-	inputQueue, completionSignal := zipInto(w)
+	inputQueue := make(chan RemoteFileLocation)
+	completionSignal := downloadAndZipInto(w, inputQueue)
 
 	for path, urls := range r.PostForm {
-		inputQueue <- FileMetadata{path: path, url: urls[0]}
+		inputQueue <- RemoteFileLocation{path: path, url: urls[0]}
 	}
 	close(inputQueue)
 
@@ -60,12 +62,12 @@ func handleZip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func zipInto(writer http.ResponseWriter) (chan<- FileMetadata, <-chan error) {
-	fileMetadataQueue := make(chan FileMetadata)
+func downloadAndZipInto(writer http.ResponseWriter, inputFileQueue <-chan RemoteFileLocation) (output <-chan error) {
+
 	downloadedFileQueue := make(chan RemoteFile)
 	completionSignal := make(chan error)
 
-	downloadsCompletionSignal := runDownloadWorkers(fileMetadataQueue, downloadedFileQueue)
+	downloadsCompletionSignal := runDownloadWorkers(inputFileQueue, downloadedFileQueue)
 	go func() {
 		err := <-downloadsCompletionSignal
 		if err != nil {
@@ -83,11 +85,11 @@ func zipInto(writer http.ResponseWriter) (chan<- FileMetadata, <-chan error) {
 		completionSignal <- nil
 	}()
 
-	return fileMetadataQueue, completionSignal
+	return completionSignal
 
 }
 
-func runZipper(w http.ResponseWriter, input chan RemoteFile) chan error {
+func runZipper(w http.ResponseWriter, input <-chan RemoteFile) chan error {
 	zipperSignal := make(chan error)
 	go func() {
 		archive := zip.NewWriter(w)
@@ -113,7 +115,7 @@ func runZipper(w http.ResponseWriter, input chan RemoteFile) chan error {
 	return zipperSignal
 }
 
-func runDownloadWorkers(input chan FileMetadata, output chan RemoteFile) <-chan error {
+func runDownloadWorkers(input <-chan RemoteFileLocation, output chan<- RemoteFile) <-chan error {
 	workersRunning := sync.WaitGroup{}
 	workerSignal := make(chan error)
 	for i := 1; i <= downloadConcurrency(); i++ {
