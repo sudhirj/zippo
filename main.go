@@ -133,7 +133,7 @@ func zipper(writer io.Writer, incoming chan RemoteFile, complete chan error) {
 			Method: zip.Deflate,
 		}
 
-		zipEntryHeader.SetModTime(time.Now())
+		zipEntryHeader.Modified = time.Now()
 		entryWriter, err := archive.CreateHeader(zipEntryHeader)
 		if err != nil {
 			complete <- err
