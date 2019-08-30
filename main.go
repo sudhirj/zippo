@@ -30,7 +30,7 @@ func init() {
 
 	maxPayloadSizeInByte, _ = strconv.ParseInt(os.Getenv("MAX_PAYLOAD_SIZE_IN_BYTES"), 10, 64)
 	if maxPayloadSizeInByte <= 0 {
-		maxPayloadSizeInByte = 32 * 1024 * 1024 * 1024
+		maxPayloadSizeInByte = 32 * 1024 * 1024
 		log.Println("MAX_PAYLOAD_SIZE_IN_BYTES not specified. Setting it to", maxPayloadSizeInByte)
 	}
 }
