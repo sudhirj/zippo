@@ -16,6 +16,25 @@ import (
 	_ "github.com/heroku/x/hmetrics/onload"
 )
 
+var (
+	downloadConcurrency  int
+	maxPayloadSizeInByte int64
+)
+
+func init() {
+	downloadConcurrency, _ = strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
+	if downloadConcurrency <= 0 {
+		downloadConcurrency = 10
+		log.Println("DOWNLOAD_CONCURRENCY not specified. Setting it to", downloadConcurrency)
+	}
+
+	maxPayloadSizeInByte, _ = strconv.ParseInt(os.Getenv("MAX_PAYLOAD_SIZE_IN_BYTES"), 10, 64)
+	if maxPayloadSizeInByte <= 0 {
+		maxPayloadSizeInByte = 32 * 1024 * 1024
+		log.Println("MAX_PAYLOAD_SIZE_IN_BYTES not specified. Setting it to", maxPayloadSizeInByte)
+	}
+}
+
 type FileMetadata struct {
 	path string
 	url  string
@@ -31,7 +50,10 @@ func main() {
 	if port == "" {
 		port = "7777"
 	}
-	http.ListenAndServe(":"+port, server())
+	err := http.ListenAndServe(":"+port, server())
+	if err != nil {
+		log.Fatal("Unable to start the server", err)
+	}
 }
 func server() http.Handler {
 	n := negroni.Classic()
@@ -40,11 +62,14 @@ func server() http.Handler {
 }
 
 func handleZip(responseWriter http.ResponseWriter, request *http.Request) {
-	downloadConcurrency, err := strconv.Atoi(os.Getenv("DOWNLOAD_CONCURRENCY"))
-	if err != nil || downloadConcurrency <= 0 {
-		downloadConcurrency = 10
+	request.Body = http.MaxBytesReader(responseWriter, request.Body, maxPayloadSizeInByte)
+
+	err := request.ParseForm()
+	if err != nil {
+		handleError(err, responseWriter)
+		return
 	}
-	request.ParseForm()
+
 	fileName := request.FormValue("filename")
 	if fileName == "" {
 		fileName = "download.zip"
@@ -102,19 +127,34 @@ func handleError(err error, w http.ResponseWriter) {
 func zipper(writer io.Writer, incoming chan RemoteFile, complete chan error) {
 	archive := zip.NewWriter(writer)
 	for rf := range incoming {
+
 		zipEntryHeader := &zip.FileHeader{
 			Name:   rf.path,
 			Method: zip.Deflate,
 		}
-		zipEntryHeader.SetModTime(time.Now())
+
+		zipEntryHeader.Modified = time.Now()
 		entryWriter, err := archive.CreateHeader(zipEntryHeader)
 		if err != nil {
 			complete <- err
 			return
 		}
-		io.Copy(entryWriter, rf.response.Body)
-		rf.response.Body.Close()
+
+		_, err = io.Copy(entryWriter, rf.response.Body)
+		if err != nil {
+			log.Println("Error in copy to response", err)
+			complete <- err
+			return
+		}
+
+		err = rf.response.Body.Close()
+		if err != nil {
+			log.Println("Error in closing response body", err)
+			complete <- err
+			return
+		}
 	}
+
 	err := archive.Close()
 	if err != nil {
 		complete <- err
